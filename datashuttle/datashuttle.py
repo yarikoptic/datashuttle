@@ -345,7 +345,7 @@ class DataShuttle:
         if init_log:
             self._start_log("upload_data", local_vars=locals())
 
-        self.show_top_level_folder()
+        self._show_pre_transfer_messages()
 
         TransferData(
             self.cfg,
@@ -381,7 +381,7 @@ class DataShuttle:
         if init_log:
             self._start_log("download_data", local_vars=locals())
 
-        self.show_top_level_folder()
+        self._show_pre_transfer_messages()
 
         TransferData(
             self.cfg,
@@ -471,7 +471,7 @@ class DataShuttle:
         """
         self._start_log("upload_project_folder_or_file", local_vars=locals())
 
-        self.show_top_level_folder()
+        self._show_pre_transfer_messages()
 
         processed_filepath = utils.get_path_after_base_folder(
             self.cfg.get_base_folder("local"),
@@ -523,7 +523,7 @@ class DataShuttle:
         """
         self._start_log("download_project_folder_or_file", local_vars=locals())
 
-        self.show_top_level_folder()
+        self._show_pre_transfer_messages()
 
         processed_filepath = utils.get_path_after_base_folder(
             self.cfg.get_base_folder("central"),
@@ -542,8 +542,10 @@ class DataShuttle:
 
         ds_logger.close_log_filehandler()
 
-    def _show_pre_transfer_messages(self):
+    def _show_pre_transfer_messages(self, include_top_level_folder=True):
         formatting.warn_on_inconsistent_sub_or_ses_leading_zeros(self.cfg)
+        if include_top_level_folder:
+            self.show_top_level_folder()
 
     # -------------------------------------------------------------------------
     # SSH
@@ -1045,6 +1047,8 @@ class DataShuttle:
         direction : direction to transfer the data, either "upload" (from
                     local to central) or "download" (from central to local).
         """
+        self._show_pre_transfer_messages(include_top_level_folder=False)
+
         transfer_all_func = (
             self.upload_all if direction == "upload" else self.download_all
         )
