@@ -247,6 +247,7 @@ def search_sub_or_ses_level(
     sub: Optional[str] = None,
     ses: Optional[str] = None,
     search_str: str = "*",
+    verbose: bool = True,
 ) -> Tuple[List[str], List[str]]:
     """
     Search project folder at the subject or session level.
@@ -266,12 +267,15 @@ def search_sub_or_ses_level(
     sub : either a subject name (string) or None. If None, the search
         is performed at the top_level_folder level
 
-    ses: either a session name (string) or None, This must not
+    ses : either a session name (string) or None, This must not
         be a session name if sub is None. If provided (with sub)
         then the session folder is searched
 
-    str: glob-format search string to search at the
+    str : glob-format search string to search at the
         folder level.
+
+    verbose : If `True`, if a search folder cannot be found, a message
+              will be printed with the un-found path.
     """
     if ses and not sub:
         utils.log_and_raise_error(
@@ -286,7 +290,11 @@ def search_sub_or_ses_level(
         base_folder = base_folder / ses
 
     all_folder_names, all_filenames = search_for_folders(
-        cfg, base_folder, local_or_central, search_str
+        cfg,
+        base_folder,
+        local_or_central,
+        search_str,
+        verbose,
     )
 
     return all_folder_names, all_filenames
@@ -390,11 +398,6 @@ def search_for_wildcards(
     return new_all_names
 
 
-# TODO CRITICAL: The way get_all_local_and_central_sub_and_ses_names
-# means that search_folders is called for folders that don't exist.
-# This is fine in this case but it prints that the folder is not found
-# which is irrelevant here. We need verbose or non-verbose mode
-# for search_for_folders.
 def get_all_local_and_central_sub_and_ses_names(
     cfg: Configs,
 ) -> Tuple[List[str], List[str]]:
@@ -407,6 +410,7 @@ def get_all_local_and_central_sub_and_ses_names(
         local_sub_foldernames,
         central_sub_foldernames,
     ) = get_local_and_central_sub_or_ses_names(cfg, None, "sub-*")
+
     all_sub_foldernames = local_sub_foldernames + central_sub_foldernames
 
     all_ses_foldernames = []
@@ -415,6 +419,7 @@ def get_all_local_and_central_sub_and_ses_names(
             local_ses_foldernames,
             central_ses_foldernames,
         ) = get_local_and_central_sub_or_ses_names(cfg, sub, "ses-*")
+
         all_ses_foldernames.extend(
             local_ses_foldernames + central_ses_foldernames
         )
@@ -466,6 +471,7 @@ def search_for_folders(  # TODO: change name
     search_path: Path,
     local_or_central: str,
     search_prefix: str,
+    verbose: bool = True,
 ) -> Tuple[List[Any], List[Any]]:
     """
     Wrapper to determine the method used to search for search
@@ -477,18 +483,21 @@ def search_for_folders(  # TODO: change name
     local_or_central : "local" or "central"
     search_path : full filepath to search in
     search_prefix : file / folder name to search (e.g. "sub-*")
+    verbose : If `True`, if a search folder cannot be found, a message
+          will be printed with the un-found path.
     """
     if local_or_central == "central" and cfg["connection_method"] == "ssh":
 
         all_folder_names, all_filenames = ssh.search_ssh_central_for_folders(
-            search_path,
-            search_prefix,
-            cfg,
+            search_path, search_prefix, cfg, verbose
         )
     else:
 
         if not search_path.exists():
-            utils.log_and_message(f"No file found at {search_path.as_posix()}")
+            if verbose:
+                utils.log_and_message(
+                    f"No file found at {search_path.as_posix()}"
+                )
             return [], []
 
         all_folder_names, all_filenames = search_filesystem_path_for_folders(
@@ -507,10 +516,12 @@ def search_filesystem_path_for_folders(
     all_folder_names = []
     all_filenames = []
     for file_or_folder in glob.glob(search_path_with_prefix.as_posix()):
+
         if os.path.isdir(file_or_folder):
             all_folder_names.append(os.path.basename(file_or_folder))
         else:
             all_filenames.append(os.path.basename(file_or_folder))
+
     return all_folder_names, all_filenames
 
 
@@ -522,6 +533,11 @@ def get_local_and_central_sub_or_ses_names(
     The search string "sub-*" is suggested in this case. Otherwise, the subject,
     level folder for the specified subject will be searched. The search_str
     "ses-*" is suggested in this case.
+
+    Note `verbose` argument of `search_sub_or_ses_level()` is set to `False`,
+    as session folders for local subjects that are not yet on central
+    will be searched for on central, showing a confusing 'folder not found'
+    message.
     """
 
     # Search local and central for folders that begin with "sub-*"
@@ -531,6 +547,7 @@ def get_local_and_central_sub_or_ses_names(
         "local",
         sub=sub,
         search_str=search_str,
+        verbose=False,
     )
     central_foldernames, _ = search_sub_or_ses_level(
         cfg,
@@ -538,6 +555,7 @@ def get_local_and_central_sub_or_ses_names(
         "central",
         sub,
         search_str=search_str,
+        verbose=False,
     )
     return local_foldernames, central_foldernames
 
