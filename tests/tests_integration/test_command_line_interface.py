@@ -391,7 +391,6 @@ class TestCommandLineInterface:
         )
 
         config_path = test_utils.get_config_path_with_cli(clean_project_name)
-
         test_utils.check_config_file(config_path, changed_configs)
 
     def test_make_sub_folders(self, setup_project):

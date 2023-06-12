@@ -249,6 +249,7 @@ def get_default_folder_used():
 
 def get_config_path_with_cli(project_name=None):
     stdout = run_cli(" show_config_path", project_name)
+    breakpoint()
     path_ = stdout[0].split(".yaml")[0] + ".yaml"
     return path_
 
